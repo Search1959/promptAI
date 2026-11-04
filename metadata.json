@@ -1,0 +1,6 @@
+{
+  "name": "PromptArchitect - Elite AI Prompt Studio",
+  "description": "Advanced multi-category AI prompt generator with interactive suggestion boxes, quality score auditing, and real-time smart enhancement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
