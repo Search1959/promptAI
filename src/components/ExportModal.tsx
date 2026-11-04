@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, Code, FileCode, Printer, Check, Copy, Link } from 'lucide-react';
+import { X, FileText, Code, FileCode, Printer, Check, Copy, Link, Cloud } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -7,6 +7,7 @@ interface ExportModalProps {
   promptText: string;
   categoryName: string;
   targetAi: string;
+  onGenerateCloudShareLink?: () => Promise<string>;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -14,9 +15,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   promptText,
   categoryName,
-  targetAi
+  targetAi,
+  onGenerateCloudShareLink
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   if (!isOpen) return null;
 
@@ -85,10 +88,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   };
 
-  const handleCopyShareLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+  const handleCopyShareLink = async () => {
+    try {
+      if (onGenerateCloudShareLink) {
+        setIsGeneratingLink(true);
+        const link = await onGenerateCloudShareLink();
+        await navigator.clipboard.writeText(link);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+      }
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy share link', err);
+    } finally {
+      setIsGeneratingLink(false);
+    }
   };
 
   return (
@@ -163,10 +178,23 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <button
             onClick={handleCopyShareLink}
+            disabled={isGeneratingLink}
             className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1.5 cursor-pointer"
           >
-            {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Link className="w-3.5 h-3.5" />}
-            <span>{copiedLink ? 'Link Copied!' : 'Copy Applet Share Link'}</span>
+            {copiedLink ? (
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+            ) : isGeneratingLink ? (
+              <Cloud className="w-3.5 h-3.5 animate-pulse" />
+            ) : (
+              <Link className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {copiedLink
+                ? 'Cloud Permalink Copied!'
+                : isGeneratingLink
+                ? 'Saving to Firestore...'
+                : 'Share via Cloud Permalink'}
+            </span>
           </button>
 
           <button

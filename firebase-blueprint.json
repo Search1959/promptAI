@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "Prompt": {
+      "title": "Prompt",
+      "description": "A structured AI prompt with metadata, quality scores, and content.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the prompt."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title or summary of the prompt."
+        },
+        "category": {
+          "type": "string",
+          "description": "Prompt category identifier (e.g., website-app, image, video)."
+        },
+        "targetAi": {
+          "type": "string",
+          "description": "Target AI model (e.g. Claude 3.7, ChatGPT o3, Cursor)."
+        },
+        "content": {
+          "type": "string",
+          "description": "The assembled prompt text."
+        },
+        "enhancedContent": {
+          "type": "string",
+          "description": "AI-enhanced prompt version if generated."
+        },
+        "qualityScore": {
+          "type": "number",
+          "description": "Prompt quality score from 0 to 100."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Taxonomy tags associated with the prompt."
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Whether the user starred this prompt."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether this prompt is publicly shared or in community gallery."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Creator display handle or anonymous."
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds."
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp in milliseconds."
+        }
+      },
+      "required": ["title", "category", "targetAi", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/prompts/{promptId}": {
+      "schema": "Prompt",
+      "description": "All created and shared prompts."
+    }
+  }
+}

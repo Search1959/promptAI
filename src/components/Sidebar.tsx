@@ -11,7 +11,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  Download
+  Download,
+  Cloud
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -120,7 +121,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <div className="flex items-center gap-3">
             <Bookmark className="w-4 h-4 text-amber-500 shrink-0" />
-            {!collapsed && <span>Saved Prompts</span>}
+            {!collapsed && (
+              <span className="flex items-center gap-1.5">
+                <span>Saved Prompts</span>
+                <span title="Cloud Firestore Synced">
+                  <Cloud className="w-3 h-3 text-emerald-500" />
+                </span>
+              </span>
+            )}
           </div>
           {!collapsed && savedCount > 0 && (
             <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">

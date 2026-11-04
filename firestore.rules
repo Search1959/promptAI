@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidPrompt(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 50
+        && data.targetAi is string && data.targetAi.size() <= 100
+        && data.content is string && data.content.size() > 0 && data.content.size() <= 50000
+        && (!('qualityScore' in data) || (data.qualityScore is number && data.qualityScore >= 0 && data.qualityScore <= 100))
+        && (!('isFavorite' in data) || data.isFavorite is bool)
+        && (!('isPublic' in data) || data.isPublic is bool);
+    }
+
+    match /prompts/{promptId} {
+      allow read: if true;
+      allow create: if isValidId(promptId) && isValidPrompt(request.resource.data);
+      allow update: if isValidId(promptId) && isValidPrompt(request.resource.data);
+      allow delete: if isValidId(promptId);
+    }
+
+    match /test/{docId} {
+      allow read: if true;
+    }
+  }
+}

@@ -12,6 +12,12 @@ import { AskThreeQuestionsModal } from './components/AskThreeQuestionsModal';
 import { ExportModal } from './components/ExportModal';
 import { SavedPromptsModal } from './components/SavedPromptsModal';
 import { PresetGalleryView } from './components/PresetGalleryView';
+import {
+  fetchPromptsFromCloud,
+  savePromptToCloud,
+  deletePromptFromCloud,
+  getPromptFromCloud
+} from './firebase/promptsService';
 
 const STORAGE_SAVED_PROMPTS_KEY = 'prompt_architect_saved_prompts_v1';
 const STORAGE_THEME_KEY = 'prompt_architect_theme_v1';
@@ -113,6 +119,31 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_SAVED_PROMPTS_KEY, JSON.stringify(savedPrompts));
   }, [savedPrompts]);
+
+  // Cloud sync on initial mount & handle shared permalink (?p=promptId)
+  useEffect(() => {
+    fetchPromptsFromCloud().then((cloudPrompts) => {
+      if (cloudPrompts && cloudPrompts.length > 0) {
+        setSavedPrompts((prev) => {
+          const map = new Map<string, SavedPrompt>();
+          prev.forEach((p) => map.set(p.id, p));
+          cloudPrompts.forEach((p) => map.set(p.id, p));
+          return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
+        });
+      }
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const sharedPromptId = params.get('p');
+    if (sharedPromptId) {
+      getPromptFromCloud(sharedPromptId).then((sharedPrompt) => {
+        if (sharedPrompt) {
+          handleLoadSavedPrompt(sharedPrompt);
+          showToast(`Loaded cloud prompt: "${sharedPrompt.title}"`);
+        }
+      });
+    }
+  }, []);
 
   // Handle Category Change
   const handleSelectCategory = (id: CategoryId) => {
@@ -264,7 +295,7 @@ export default function App() {
     }
   };
 
-  // Save prompt to library
+  // Save prompt to library & Firestore
   const handleSavePrompt = () => {
     const title =
       fieldValues.objective?.slice(0, 40) ||
@@ -285,24 +316,62 @@ export default function App() {
     };
 
     setSavedPrompts((prev) => [newPrompt, ...prev]);
-    showToast('Saved to your Prompt Library!');
+    savePromptToCloud(newPrompt).catch((err) => console.error('Cloud save failed', err));
+    showToast('Saved to Cloud Database & Library!');
   };
 
   const isCurrentSaved = useMemo(() => {
     return savedPrompts.some((p) => p.content === currentPromptText);
   }, [savedPrompts, currentPromptText]);
 
-  // Delete saved prompt
+  // Delete saved prompt from local & Cloud
   const handleDeleteSavedPrompt = (id: string) => {
     setSavedPrompts((prev) => prev.filter((p) => p.id !== id));
-    showToast('Prompt deleted from library');
+    deletePromptFromCloud(id).catch((err) => console.error('Cloud delete failed', err));
+    showToast('Prompt deleted from library & cloud');
   };
 
-  // Toggle favorite
+  // Toggle favorite in local & Cloud
   const handleToggleFavorite = (id: string) => {
     setSavedPrompts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isFavorite: !p.isFavorite } : p))
+      prev.map((p) => {
+        if (p.id === id) {
+          const updated = { ...p, isFavorite: !p.isFavorite };
+          savePromptToCloud(updated).catch(console.error);
+          return updated;
+        }
+        return p;
+      })
     );
+  };
+
+  // Generate Cloud Permalink
+  const handleGenerateCloudShareLink = async (): Promise<string> => {
+    let promptId = `prompt-${Date.now()}`;
+    const existing = savedPrompts.find((p) => p.content === currentPromptText);
+    if (existing) {
+      promptId = existing.id;
+    } else {
+      const title =
+        fieldValues.objective?.slice(0, 40) ||
+        fieldValues.subject?.slice(0, 40) ||
+        `${activeCategory.name} Specification`;
+      const newPrompt: SavedPrompt = {
+        id: promptId,
+        title,
+        category: activeCategory.id,
+        targetAi: fieldValues.target_ai || 'ChatGPT / Claude',
+        content: currentPromptText,
+        enhancedContent: enhancedPrompt || undefined,
+        qualityScore: qualityAnalysis.score,
+        tags: [activeCategory.id],
+        createdAt: Date.now(),
+        isFavorite: false
+      };
+      setSavedPrompts((prev) => [newPrompt, ...prev]);
+      await savePromptToCloud(newPrompt);
+    }
+    return `${window.location.origin}${window.location.pathname}?p=${promptId}`;
   };
 
   // Load saved prompt back into builder
@@ -460,6 +529,7 @@ export default function App() {
         promptText={currentPromptText}
         categoryName={activeCategory.name}
         targetAi={fieldValues.target_ai || 'Claude / ChatGPT'}
+        onGenerateCloudShareLink={handleGenerateCloudShareLink}
       />
 
       <SavedPromptsModal
